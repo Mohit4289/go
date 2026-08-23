@@ -3,6 +3,7 @@ package handler
 import (
 	"gin-quickstart/service"
 
+	"github.com/alexedwards/argon2id"
 	"github.com/gin-gonic/gin"
 )
 
@@ -33,10 +34,18 @@ func User(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
+		hashPass, err := argon2id.CreateHash(user.Password, argon2id.DefaultParams)
+		if err != nil {
+			c.JSON(400, gin.H{
+				"error": "hashpass error",
+			})
+			return
+		}
+
 		addingUser, err := userService.AddUser(
 			user.Name,
 			user.Email,
-			user.Password,
+			hashPass,
 		)
 
 		if err != nil {

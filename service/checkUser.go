@@ -4,6 +4,7 @@ import (
 	"errors"
 	"gin-quickstart/repository"
 
+	"github.com/alexedwards/argon2id"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -67,19 +68,19 @@ func (s *UserService) AddUser(
 
 func (s *UserService) CheckPassword(email string, password string) (bool, error) {
 	data, err := s.userRepo.VerifyPassword(email)
-	if err != nil {
-		return false, ValidationError{
-			Field: "invalid email",
-			Msg:   "email is wrong",
-		}
-	}
 
-	if password != data {
+	if err != nil {
 		return false, ValidationError{
 			Field: "credentials",
 			Msg:   "invalid email or password",
 		}
 	}
 
-	return true, nil
+	verifyPass, err := argon2id.ComparePasswordAndHash(password, data)
+
+	if err != nil {
+		return false, err
+	}
+
+	return verifyPass, nil
 }

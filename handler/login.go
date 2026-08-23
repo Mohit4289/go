@@ -48,6 +48,13 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
+		if !checkingPass {
+			c.JSON(401, gin.H{
+				"error": "invalid email or password",
+			})
+			return
+		}
+
 		c.JSON(200, gin.H{
 			"message": "login sucessfully",
 			"user":    login,
