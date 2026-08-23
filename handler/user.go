@@ -7,9 +7,9 @@ import (
 )
 
 type CreateUser struct {
-	Name  string `json:"name" binding:"required"`
-	Email string `json:"email" binding:"required,email"`
-	Age   int    `json:"age" binding:"required,min=18"`
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"pass" binding:"required"`
 }
 
 func User(userService *service.UserService) gin.HandlerFunc {
@@ -33,9 +33,22 @@ func User(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, gin.H{
-			"message": "working",
-			"user":    user,
+		addingUser, err := userService.AddUser(
+			user.Name,
+			user.Email,
+			user.Password,
+		)
+
+		if err != nil {
+			c.JSON(500, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(201, gin.H{
+			"message": "user created",
+			"user":    addingUser,
 		})
 	}
 }

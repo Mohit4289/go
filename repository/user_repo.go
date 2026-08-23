@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	ID    int
+	ID    int64
 	Name  string
 	Email string
 }
@@ -37,7 +37,7 @@ func (r *UserRepo) CreateUser(
 
 	err := r.DB.QueryRow(
 		context.Background(),
-		`INSERT INTO users (name, email, password)
+		`INSERT INTO "user" (name, email, password)
 		 VALUES ($1, $2, $3)
 		 RETURNING id, name, email`,
 		name,
@@ -56,15 +56,19 @@ func (r *UserRepo) CreateUser(
 	return user, nil
 }
 
-func (r *UserRepo) FindUserByEmail(email string) (int, error) {
-	checkUser := r.DB.QueryRow(context.Background(), "SELECT id FROM users WHERE email =$1", email)
+func (r *UserRepo) FindUserByEmail(email string) (int64, error) {
+	row := r.DB.QueryRow(
+		context.Background(),
+		`SELECT id FROM public."user" WHERE email = $1`,
+		email,
+	)
 
-	var userID int
+	var userID int64
 
-	err := checkUser.Scan(&userID)
+	err := row.Scan(&userID)
 	if err != nil {
 		return 0, err
 	}
 
-	return userID, err
+	return userID, nil
 }

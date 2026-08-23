@@ -7,6 +7,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+type User struct {
+	name  string
+	email string
+	pass  string
+}
+
 type ValidationError struct {
 	Field string
 	Msg   string
@@ -42,4 +48,19 @@ func (s *UserService) ValidateUser(email string) error {
 	}
 
 	return err
+}
+
+func (s *UserService) AddUser(
+	name string,
+	email string,
+	password string,
+) (repository.User, error) {
+
+	user, err := s.userRepo.CreateUser(name, email, password)
+
+	if err != nil {
+		return repository.User{}, err
+	}
+
+	return user, nil
 }
