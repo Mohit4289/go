@@ -12,5 +12,5 @@ func SetupRoutes(r *gin.Engine, userService *service.UserService) {
 	auth := r.Group("/auth")
 
 	auth.POST("/user", handler.User(userService))
-	auth.POST("/login", handler.Login)
+	auth.POST("/login", handler.Login(userService))
 }

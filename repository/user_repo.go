@@ -72,3 +72,19 @@ func (r *UserRepo) FindUserByEmail(email string) (int64, error) {
 
 	return userID, nil
 }
+
+func (r *UserRepo) VerifyPassword(email string) (string, error) {
+	row := r.DB.QueryRow(context.Background(), `SELECT password FROM public."user" WHERE email = $1`,
+		email,
+	)
+
+	var userPass string
+
+	err := row.Scan(&userPass)
+	if err != nil {
+		return "", err
+	}
+
+	return userPass, nil
+
+}

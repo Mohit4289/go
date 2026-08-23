@@ -64,3 +64,22 @@ func (s *UserService) AddUser(
 
 	return user, nil
 }
+
+func (s *UserService) CheckPassword(email string, password string) (bool, error) {
+	data, err := s.userRepo.VerifyPassword(email)
+	if err != nil {
+		return false, ValidationError{
+			Field: "invalid email",
+			Msg:   "email is wrong",
+		}
+	}
+
+	if password != data {
+		return false, ValidationError{
+			Field: "password checker",
+			Msg:   "wrong password",
+		}
+	}
+
+	return true, nil
+}
