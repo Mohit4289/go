@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"gin-quickstart/service"
 
 	"github.com/gin-gonic/gin"
@@ -24,10 +25,25 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
-		checkingpass, err := userService.CheckPassword(login.Email, login.Password)
+		var validationErr service.ValidationError
+
+		checkingPass, err := userService.CheckPassword(
+			login.Email,
+			login.Password,
+		)
+
 		if err != nil {
+
+			if errors.As(err, &validationErr) {
+				c.JSON(400, gin.H{
+					"field": validationErr.Field,
+					"error": validationErr.Msg,
+				})
+				return
+			}
+
 			c.JSON(500, gin.H{
-				"error": err.Error(),
+				"error": "internal server error",
 			})
 			return
 		}
@@ -35,7 +51,7 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"message": "login sucessfully",
 			"user":    login,
-			"bool":    checkingpass,
+			"bool":    checkingPass,
 		})
 	}
 }
