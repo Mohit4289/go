@@ -76,8 +76,8 @@ func (s *UserService) CheckPassword(email string, password string) (bool, error)
 
 	if password != data {
 		return false, ValidationError{
-			Field: "password checker",
-			Msg:   "wrong password",
+			Field: "credentials",
+			Msg:   "invalid email or password",
 		}
 	}
 
