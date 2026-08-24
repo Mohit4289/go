@@ -28,6 +28,7 @@ func NewUserRepo(db *pgxpool.Pool) *UserRepo {
 }
 
 func (r *UserRepo) CreateUser(
+	ctx context.Context,
 	name string,
 	email string,
 	password string,
@@ -36,7 +37,7 @@ func (r *UserRepo) CreateUser(
 	var user User
 
 	err := r.DB.QueryRow(
-		context.Background(),
+		ctx,
 		`INSERT INTO "user" (name, email, password)
 		 VALUES ($1, $2, $3)
 		 RETURNING id, name, email`,
@@ -55,9 +56,9 @@ func (r *UserRepo) CreateUser(
 	return user, nil
 }
 
-func (r *UserRepo) FindUserByEmail(email string) (int64, error) {
+func (r *UserRepo) FindUserByEmail(ctx context.Context, email string) (int64, error) {
 	row := r.DB.QueryRow(
-		context.Background(),
+		ctx,
 		`SELECT id FROM public."user" WHERE email = $1`,
 		email,
 	)
@@ -72,7 +73,7 @@ func (r *UserRepo) FindUserByEmail(email string) (int64, error) {
 }
 
 func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (string, error) {
-	row := r.DB.QueryRow(context.Background(), `SELECT password FROM public."user" WHERE email = $1`,
+	row := r.DB.QueryRow(ctx, `SELECT password FROM public."user" WHERE email = $1`,
 		email,
 	)
 

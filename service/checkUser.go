@@ -36,7 +36,7 @@ func NewUserService(userRepo *repository.UserRepo) *UserService {
 
 func (s *UserService) ValidateUser(ctx context.Context, email string) error {
 
-	_, err := s.userRepo.FindUserByEmail(email)
+	_, err := s.userRepo.FindUserByEmail(ctx, email)
 
 	if err == nil {
 		return ValidationError{
@@ -59,7 +59,7 @@ func (s *UserService) AddUser(
 	password string,
 ) (repository.User, error) {
 
-	user, err := s.userRepo.CreateUser(name, email, password)
+	user, err := s.userRepo.CreateUser(ctx, name, email, password)
 
 	if err != nil {
 		return repository.User{}, err
