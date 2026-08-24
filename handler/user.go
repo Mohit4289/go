@@ -48,7 +48,6 @@ func User(userService *service.UserService) gin.HandlerFunc {
 			user.Email,
 			hashPass,
 		)
-
 		if err != nil {
 			c.JSON(500, gin.H{
 				"error": err.Error(),

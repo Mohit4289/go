@@ -48,7 +48,6 @@ func (r *UserRepo) CreateUser(
 		&user.Name,
 		&user.Email,
 	)
-
 	if err != nil {
 		return User{}, err
 	}
@@ -64,7 +63,6 @@ func (r *UserRepo) FindUserByEmail(email string) (int64, error) {
 	)
 
 	var userID int64
-
 	err := row.Scan(&userID)
 	if err != nil {
 		return 0, err
@@ -79,7 +77,6 @@ func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (string, er
 	)
 
 	var userPass string
-
 	err := row.Scan(&userPass)
 	if err != nil {
 		return "", err

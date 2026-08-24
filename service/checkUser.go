@@ -70,7 +70,6 @@ func (s *UserService) AddUser(
 
 func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (bool, error) {
 	data, err := s.userRepo.VerifyPassword(ctx, email)
-
 	if err != nil {
 		return false, ValidationError{
 			Field: "credentials",
@@ -79,7 +78,6 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 	}
 
 	verifyPass, err := argon2id.ComparePasswordAndHash(password, data)
-
 	if err != nil {
 		return false, err
 	}

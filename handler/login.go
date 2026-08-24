@@ -32,7 +32,6 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 			login.Email,
 			login.Password,
 		)
-
 		if err != nil {
 			if errors.As(err, &validationErr) {
 				c.JSON(400, gin.H{
