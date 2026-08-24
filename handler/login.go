@@ -28,12 +28,12 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 		var validationErr service.ValidationError
 
 		checkingPass, err := userService.CheckPassword(
+			c.Request.Context(),
 			login.Email,
 			login.Password,
 		)
 
 		if err != nil {
-
 			if errors.As(err, &validationErr) {
 				c.JSON(400, gin.H{
 					"field": validationErr.Field,

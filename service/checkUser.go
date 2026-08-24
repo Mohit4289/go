@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"gin-quickstart/repository"
 
@@ -33,7 +34,7 @@ func NewUserService(userRepo *repository.UserRepo) *UserService {
 	}
 }
 
-func (s *UserService) ValidateUser(email string) error {
+func (s *UserService) ValidateUser(ctx context.Context, email string) error {
 
 	_, err := s.userRepo.FindUserByEmail(email)
 
@@ -52,6 +53,7 @@ func (s *UserService) ValidateUser(email string) error {
 }
 
 func (s *UserService) AddUser(
+	ctx context.Context,
 	name string,
 	email string,
 	password string,
@@ -66,8 +68,8 @@ func (s *UserService) AddUser(
 	return user, nil
 }
 
-func (s *UserService) CheckPassword(email string, password string) (bool, error) {
-	data, err := s.userRepo.VerifyPassword(email)
+func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (bool, error) {
+	data, err := s.userRepo.VerifyPassword(ctx, email)
 
 	if err != nil {
 		return false, ValidationError{

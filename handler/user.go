@@ -26,7 +26,7 @@ func User(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
-		err = userService.ValidateUser(user.Email)
+		err = userService.ValidateUser(c.Request.Context(), user.Email)
 		if err != nil {
 			c.JSON(500, gin.H{
 				"error": err.Error(),
@@ -43,6 +43,7 @@ func User(userService *service.UserService) gin.HandlerFunc {
 		}
 
 		addingUser, err := userService.AddUser(
+			c.Request.Context(),
 			user.Name,
 			user.Email,
 			hashPass,
