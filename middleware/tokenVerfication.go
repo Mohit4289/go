@@ -20,7 +20,7 @@ func TokenVerification() gin.HandlerFunc {
 			return
 		}
 
-		secret, ok := os.LookupEnv("SECRET_TOKEN")
+		secret, ok := os.LookupEnv("JWT_SECRET")
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"message": "Secret token not configured",

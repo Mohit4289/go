@@ -2,6 +2,7 @@ package main
 
 import (
 	"gin-quickstart/database"
+	"gin-quickstart/middleware"
 	"gin-quickstart/repository"
 	"gin-quickstart/router"
 	"gin-quickstart/service"
@@ -34,6 +35,7 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	router.SetupRoutes(r, userService)
 
+	r.Use(middleware.TokenVerification())
 	r.GET("/user", func(ctx *gin.Context) {
 
 		var users []User
