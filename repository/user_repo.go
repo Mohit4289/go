@@ -13,13 +13,8 @@ type User struct {
 }
 
 type UserPass struct {
-	Id       int64
+	ID       int64
 	Password string
-}
-
-type validationError struct {
-	Field string
-	Msg   string
 }
 
 type UserRepo struct {
@@ -78,14 +73,17 @@ func (r *UserRepo) FindUserByEmail(ctx context.Context, email string) (int64, er
 }
 
 func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (UserPass, error) {
-	row := r.DB.QueryRow(ctx, `SELECT id password FROM public."user" WHERE email = $1`,
+	row := r.DB.QueryRow(ctx, `SELECT id, password FROM public."user" WHERE email = $1`,
 		email,
 	)
 
 	var userPass UserPass
-	err := row.Scan(&userPass)
+	err := row.Scan(
+		&userPass.ID,
+		&userPass.Password,
+	)
 	if err != nil {
-		return userPass, err
+		return UserPass{}, err
 	}
 
 	return userPass, nil

@@ -13,12 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type User struct {
-	name  string
-	email string
-	pass  string
-}
-
 type ValidationError struct {
 	Field string
 	Msg   string
@@ -99,14 +93,14 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 	}
 
 	claims := jwt.MapClaims{
-		"user_id": data.Id,
+		"user_id": data.ID,
 		"email":   email,
 		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 		"iat":     time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(
-		jwt.SigningMethodES256,
+		jwt.SigningMethodHS256,
 		claims,
 	)
 
