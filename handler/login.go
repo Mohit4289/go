@@ -27,7 +27,7 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 
 		var validationErr service.ValidationError
 
-		checkingPass, err := userService.CheckPassword(
+		token, err := userService.CheckPassword(
 			c.Request.Context(),
 			login.Email,
 			login.Password,
@@ -47,17 +47,9 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
-		if !checkingPass {
-			c.JSON(401, gin.H{
-				"error": "invalid email or password",
-			})
-			return
-		}
-
 		c.JSON(200, gin.H{
 			"message": "login sucessfully",
-			"user":    login,
-			"bool":    checkingPass,
+			"token":   token,
 		})
 	}
 }

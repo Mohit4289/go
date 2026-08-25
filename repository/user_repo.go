@@ -12,6 +12,11 @@ type User struct {
 	Email string
 }
 
+type UserPass struct {
+	Id       int64
+	Password string
+}
+
 type validationError struct {
 	Field string
 	Msg   string
@@ -72,15 +77,15 @@ func (r *UserRepo) FindUserByEmail(ctx context.Context, email string) (int64, er
 	return userID, nil
 }
 
-func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (string, error) {
-	row := r.DB.QueryRow(ctx, `SELECT password FROM public."user" WHERE email = $1`,
+func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (UserPass, error) {
+	row := r.DB.QueryRow(ctx, `SELECT id password FROM public."user" WHERE email = $1`,
 		email,
 	)
 
-	var userPass string
+	var userPass UserPass
 	err := row.Scan(&userPass)
 	if err != nil {
-		return "", err
+		return userPass, err
 	}
 
 	return userPass, nil

@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"gin-quickstart/repository"
+	"time"
+
+	"os"
 
 	"github.com/alexedwards/argon2id"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -68,19 +72,48 @@ func (s *UserService) AddUser(
 	return user, nil
 }
 
-func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (bool, error) {
+func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (string, error) {
 	data, err := s.userRepo.VerifyPassword(ctx, email)
 	if err != nil {
-		return false, ValidationError{
+		return "", ValidationError{
 			Field: "credentials",
 			Msg:   "invalid email or password",
 		}
 	}
 
-	verifyPass, err := argon2id.ComparePasswordAndHash(password, data)
+	verifyPass, err := argon2id.ComparePasswordAndHash(password, data.Password)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
-	return verifyPass, nil
+	if !verifyPass {
+		return "", ValidationError{
+			Field: "Credentials",
+			Msg:   "Wrong password",
+		}
+	}
+
+	secret, ok := os.LookupEnv("JWT_SECRET")
+	if !ok {
+		return "", errors.New("Token not configuered")
+	}
+
+	claims := jwt.MapClaims{
+		"user_id": data.Id,
+		"email":   email,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodES256,
+		claims,
+	)
+
+	signedToken, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	return signedToken, nil
 }
