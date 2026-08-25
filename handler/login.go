@@ -47,6 +47,16 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
+		c.SetCookie(
+			"access_token",
+			token,
+			60*60*24,
+			"/",
+			"",
+			false,
+			true,
+		)
+
 		c.JSON(200, gin.H{
 			"message": "login sucessfully",
 			"token":   token,
