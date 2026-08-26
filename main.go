@@ -27,7 +27,7 @@ func main() {
 	defer db.Close()
 	userRepo := repository.NewUserRepo(db)
 	userService := service.NewUserService(userRepo)
-	userData := handler.GetUserRepo(db)
+	userData := handler.GetUserRepo(userRepo)
 
 	router.SetupRoutes(r, userService, userData)
 	r.Run()

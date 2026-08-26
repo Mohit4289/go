@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"gin-quickstart/repository"
+
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type GETUser struct {
@@ -11,22 +12,22 @@ type GETUser struct {
 	Email string
 }
 
-type UserRepo struct {
-	db *pgxpool.Pool
+type UserService struct {
+	userRepo *repository.UserRepo
 }
 
-func GetUserRepo(DB *pgxpool.Pool) *UserRepo {
-	return &UserRepo{
-		db: DB,
+func GetUserRepo(userRepo *repository.UserRepo) *UserService {
+	return &UserService{
+		userRepo: userRepo,
 	}
 }
 
-func GetUser(r *UserRepo) gin.HandlerFunc {
+func GetUser(r *UserService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
 		var users []GETUser
 
-		rows, err := r.db.Query(
+		rows, err := r.userRepo.DB.Query(
 			ctx,
 			`SELECT id, name, email FROM public."user"`,
 		)
