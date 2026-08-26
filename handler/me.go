@@ -16,7 +16,7 @@ func MeUser(u *service.UserService) gin.HandlerFunc {
 			return
 		}
 
-		id, ok := idValue.(int8)
+		id, ok := idValue.(int)
 		if !ok {
 			ctx.JSON(500, gin.H{
 				"message": "invalid user_id type",
@@ -26,7 +26,7 @@ func MeUser(u *service.UserService) gin.HandlerFunc {
 
 		userData, err := u.FetchUser(ctx, id)
 		if err != nil {
-			ctx.JSON(400, gin.H{
+			ctx.JSON(404, gin.H{
 				"message": "not fetched maybe user dont exsit",
 				"error":   err,
 			})
@@ -36,6 +36,5 @@ func MeUser(u *service.UserService) gin.HandlerFunc {
 		ctx.JSON(200, gin.H{
 			"data": userData.Name,
 		})
-		return
 	}
 }

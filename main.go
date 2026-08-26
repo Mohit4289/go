@@ -3,7 +3,6 @@ package main
 import (
 	"gin-quickstart/database"
 	"gin-quickstart/handler"
-	"gin-quickstart/middleware"
 	"gin-quickstart/repository"
 	"gin-quickstart/router"
 	"gin-quickstart/service"
@@ -28,10 +27,8 @@ func main() {
 	defer db.Close()
 	userRepo := repository.NewUserRepo(db)
 	userService := service.NewUserService(userRepo)
-	handler.GetUserRepo(db)
-	router.SetupRoutes(r, userService)
+	userData := handler.GetUserRepo(db)
 
-	r.Use(middleware.TokenVerification())
-
+	router.SetupRoutes(r, userService, userData)
 	r.Run()
 }

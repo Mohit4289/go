@@ -54,7 +54,8 @@ func TokenVerification() gin.HandlerFunc {
 		}
 
 		user_id := claims["user_id"]
-		c.Set("user_id", user_id)
+		id := int(user_id.(float64))
+		c.Set("user_id", id)
 		c.Next()
 
 	}

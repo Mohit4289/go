@@ -90,7 +90,7 @@ func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (UserPass, 
 
 }
 
-func (r *UserRepo) FetchData(ctx context.Context, id int8) (User, error) {
+func (r *UserRepo) FetchData(ctx context.Context, id int) (User, error) {
 
 	row := r.DB.QueryRow(ctx, `SELECT id, name, email FROM public."user" WHERE id = $1`, id)
 
