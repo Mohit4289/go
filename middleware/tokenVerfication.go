@@ -44,7 +44,17 @@ func TokenVerification() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.JSON(401, gin.H{
+				"message": "user id not fetched",
+			})
+			c.Abort()
+			return
+		}
 
+		user_id := claims["user_id"]
+		c.Set("user_id", user_id)
 		c.Next()
 
 	}

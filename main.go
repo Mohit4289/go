@@ -81,8 +81,17 @@ func main() {
 			return
 		}
 
+		user_data, ok := ctx.Get("user_id")
+		if !ok {
+			ctx.JSON(401, gin.H{
+				"message": "data didnt came in main",
+			})
+			return
+		}
+
 		ctx.JSON(200, gin.H{
-			"users": users,
+			"users":     users,
+			"user_data": user_data,
 		})
 	})
 
