@@ -111,3 +111,14 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 
 	return signedToken, nil
 }
+
+func (s *UserService) FetchUser(ctx context.Context, id int8) (repository.User, error) {
+	UserData, err := s.userRepo.FetchData(ctx, id)
+	if err != nil {
+		return repository.User{}, ValidationError{
+			Field: "data not fetched",
+			Msg:   err.Error(),
+		}
+	}
+	return UserData, nil
+}

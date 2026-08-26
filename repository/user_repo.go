@@ -89,3 +89,19 @@ func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (UserPass, 
 	return userPass, nil
 
 }
+
+func (r *UserRepo) FetchData(ctx context.Context, id int8) (User, error) {
+
+	row := r.DB.QueryRow(ctx, `SELECT id, name, email FROM public."user" WHERE id = $1`, id)
+
+	var UserData User
+	err := row.Scan(
+		&UserData.ID,
+		&UserData.Name,
+		&UserData.Email,
+	)
+	if err != nil {
+		return User{}, err
+	}
+	return UserData, nil
+}
