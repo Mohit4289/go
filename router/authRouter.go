@@ -14,6 +14,7 @@ func SetupRoutes(r *gin.Engine, userService *service.UserService, userRepo *hand
 
 	auth.POST("/user", handler.User(userService))
 	auth.POST("/login", handler.Login(userService))
+	auth.POST("/refresh_token", handler.RefreshToken(userService))
 
 	auth.Use(middleware.TokenVerification())
 	auth.GET("/checkuser", handler.GetUser(userRepo))

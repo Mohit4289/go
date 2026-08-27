@@ -27,7 +27,7 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 
 		var validationErr service.ValidationError
 
-		token, err := userService.CheckPassword(
+		token, refresh_token, err := userService.CheckPassword(
 			c.Request.Context(),
 			login.Email,
 			login.Password,
@@ -48,9 +48,19 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 		}
 
 		c.SetCookie(
+			"refresh_token",
+			refresh_token,
+			60*60*24,
+			"/",
+			"",
+			false,
+			true,
+		)
+
+		c.SetCookie(
 			"access_token",
 			token,
-			60*60*24,
+			60,
 			"/",
 			"",
 			false,

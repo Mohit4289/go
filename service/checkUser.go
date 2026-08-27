@@ -2,6 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"gin-quickstart/repository"
 	"time"
@@ -66,10 +70,10 @@ func (s *UserService) AddUser(
 	return user, nil
 }
 
-func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (string, error) {
+func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (string, string, error) {
 	data, err := s.userRepo.VerifyPassword(ctx, email)
 	if err != nil {
-		return "", ValidationError{
+		return "", "", ValidationError{
 			Field: "credentials",
 			Msg:   "invalid email or password",
 		}
@@ -77,11 +81,11 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 
 	verifyPass, err := argon2id.ComparePasswordAndHash(password, data.Password)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if !verifyPass {
-		return "", ValidationError{
+		return "", "", ValidationError{
 			Field: "Credentials",
 			Msg:   "Wrong password",
 		}
@@ -89,7 +93,7 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 
 	secret, ok := os.LookupEnv("JWT_SECRET")
 	if !ok {
-		return "", errors.New("Token not configuered")
+		return "", "", errors.New("Token not configuered")
 	}
 
 	claims := jwt.MapClaims{
@@ -106,10 +110,31 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 
 	signedToken, err := token.SignedString([]byte(secret))
 	if err != nil {
-		return "", err
+		return "", "", errors.New("Not able to generate Token")
 	}
 
-	return signedToken, nil
+	generateToken := make([]byte, 32)
+
+	if _, err := rand.Read(generateToken); err != nil {
+		return "", "", ValidationError{
+			Field: "Refresh token",
+			Msg:   "not able to generate token for refresh",
+		}
+	}
+
+	stringToken := base64.RawURLEncoding.EncodeToString(generateToken)
+	hash := sha256.Sum256([]byte(stringToken))
+	tokenHash := hex.EncodeToString(hash[:])
+
+	addingToken, err := s.userRepo.AddRefreshToken(ctx, tokenHash, email)
+	if addingToken == false {
+		return "", "", ValidationError{
+			Field: "DB error",
+			Msg:   "Not added refresh token",
+		}
+	}
+
+	return signedToken, stringToken, nil
 }
 
 func (s *UserService) FetchUser(ctx context.Context, id int) (repository.User, error) {
@@ -120,5 +145,14 @@ func (s *UserService) FetchUser(ctx context.Context, id int) (repository.User, e
 			Msg:   err.Error(),
 		}
 	}
+	return UserData, nil
+}
+
+func (s *UserService) VerfiyToken(ctx context.Context, token string) (repository.User, error) {
+	UserData, err := s.userRepo.VerfiyToken(ctx, token)
+	if err != nil {
+		return repository.User{}, err
+	}
+
 	return UserData, nil
 }

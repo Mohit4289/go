@@ -105,3 +105,35 @@ func (r *UserRepo) FetchData(ctx context.Context, id int) (User, error) {
 	}
 	return UserData, nil
 }
+
+func (r *UserRepo) AddRefreshToken(ctx context.Context, refresh_token string, email string) (bool, error) {
+	_, err := r.DB.Exec(
+		ctx,
+		`UPDATE "user"
+         SET refresh_token = $1
+         WHERE email = $2`,
+		refresh_token, email,
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (r *UserRepo) VerfiyToken(ctx context.Context, refresh_token string) (User, error) {
+	row := r.DB.QueryRow(ctx, `SELECT id, name, email FROM public."user" WHERE refresh_token = $1`, refresh_token)
+
+	var user User
+	err := row.Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+	)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
