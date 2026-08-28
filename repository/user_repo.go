@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -136,4 +137,17 @@ func (r *UserRepo) VerfiyToken(ctx context.Context, refresh_token string) (User,
 	}
 
 	return user, nil
+}
+
+func (r *UserRepo) RemoveToken(ctx context.Context, refresh_token string) (bool, error) {
+	row, err := r.DB.Exec(ctx, `DELETE FROM "user" WHERE refresh_token = $1`, refresh_token)
+	if err != nil {
+		return false, err
+	}
+
+	if row.RowsAffected() == 0 {
+		return false, errors.New("refresh token not found")
+	}
+
+	return true, nil
 }

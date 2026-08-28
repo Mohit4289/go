@@ -156,3 +156,15 @@ func (s *UserService) VerfiyToken(ctx context.Context, token string) (repository
 
 	return UserData, nil
 }
+
+func (s *UserService) LogoutRemoveToken(ctx context.Context, hashtoken string) (bool, error) {
+	DeleteToken, err := s.userRepo.RemoveToken(ctx, hashtoken)
+	if err != nil {
+		return false, ValidationError{
+			Field: "DB Error",
+			Msg:   "Failed to Delete Token",
+		}
+	}
+
+	return DeleteToken, nil
+}

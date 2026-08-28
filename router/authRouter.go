@@ -19,5 +19,6 @@ func SetupRoutes(r *gin.Engine, userService *service.UserService, userRepo *hand
 	auth.Use(middleware.TokenVerification())
 	auth.GET("/checkuser", handler.GetUser(userRepo))
 	auth.GET("/userdata", handler.MeUser(userService))
+	auth.POST("/logout", handler.Logout(userService))
 
 }
