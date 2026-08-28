@@ -4,18 +4,19 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"net/http"
+
 	"gin-quickstart/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Logout(UserService *service.UserService) gin.HandlerFunc {
+func Logout(userService *service.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		refreshToken, err := c.Cookie("refresh_token")
 		if err != nil {
-			c.JSON(500, gin.H{
-				"message": "not able to fetch  refresh token",
-				"err":     err,
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "refresh token is required to logout",
 			})
 			return
 		}
@@ -23,27 +24,24 @@ func Logout(UserService *service.UserService) gin.HandlerFunc {
 		hash := sha256.Sum256([]byte(refreshToken))
 		tokenHash := hex.EncodeToString(hash[:])
 
-		var validationErr service.ValidationError
-
-		removingToken, err := UserService.LogoutRemoveToken(c, tokenHash)
+		removingToken, err := userService.LogoutRemoveToken(c.Request.Context(), tokenHash)
 		if err != nil {
-			if errors.As(err, &validationErr) {
-				c.JSON(500, gin.H{
-					"field": validationErr.Field,
-					"error": validationErr.Msg,
+			if errors.Is(err, service.ErrTokenNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "refresh token not found or already invalidated",
 				})
 				return
 			}
 
-			c.JSON(500, gin.H{
-				"message": "failed to logout",
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to logout",
 			})
 			return
 		}
 
 		if !removingToken {
-			c.JSON(404, gin.H{
-				"message": "refresh token not found",
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "refresh token not found",
 			})
 			return
 		}
@@ -54,7 +52,7 @@ func Logout(UserService *service.UserService) gin.HandlerFunc {
 			-1,
 			"/",
 			"",
-			true,
+			false,
 			true,
 		)
 		c.SetCookie(
@@ -63,12 +61,12 @@ func Logout(UserService *service.UserService) gin.HandlerFunc {
 			-1,
 			"/",
 			"",
-			true,
+			false,
 			true,
 		)
 
-		c.JSON(200, gin.H{
-			"message": "successfully remove token and logout",
+		c.JSON(http.StatusOK, gin.H{
+			"message": "logged out successfully",
 		})
 	}
 }

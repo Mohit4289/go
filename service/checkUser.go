@@ -17,6 +17,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+var (
+	ErrUserAlreadyExists        = errors.New("user already exists")
+	ErrInvalidCredentials       = errors.New("invalid email or password")
+	ErrUserNotFound             = errors.New("user not found")
+	ErrTokenNotFound            = errors.New("refresh token not found")
+	ErrJWTSecretNotConfigured   = errors.New("JWT secret not configured")
+)
+
 type ValidationError struct {
 	Field string
 	Msg   string
@@ -37,14 +45,9 @@ func NewUserService(userRepo *repository.UserRepo) *UserService {
 }
 
 func (s *UserService) ValidateUser(ctx context.Context, email string) error {
-
 	_, err := s.userRepo.FindUserByEmail(ctx, email)
-
 	if err == nil {
-		return ValidationError{
-			Field: "email",
-			Msg:   "user already exists",
-		}
+		return ErrUserAlreadyExists
 	}
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -60,9 +63,7 @@ func (s *UserService) AddUser(
 	email string,
 	password string,
 ) (repository.User, error) {
-
 	user, err := s.userRepo.CreateUser(ctx, name, email, password)
-
 	if err != nil {
 		return repository.User{}, err
 	}
@@ -73,27 +74,24 @@ func (s *UserService) AddUser(
 func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (string, string, error) {
 	data, err := s.userRepo.VerifyPassword(ctx, email)
 	if err != nil {
-		return "", "", ValidationError{
-			Field: "credentials",
-			Msg:   "invalid email or password",
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", ErrInvalidCredentials
 		}
+		return "", "", err
 	}
 
 	verifyPass, err := argon2id.ComparePasswordAndHash(password, data.Password)
 	if err != nil {
-		return "", "", err
+		return "", "", ErrInvalidCredentials
 	}
 
 	if !verifyPass {
-		return "", "", ValidationError{
-			Field: "Credentials",
-			Msg:   "Wrong password",
-		}
+		return "", "", ErrInvalidCredentials
 	}
 
 	secret, ok := os.LookupEnv("JWT_SECRET")
 	if !ok {
-		return "", "", errors.New("Token not configuered")
+		return "", "", ErrJWTSecretNotConfigured
 	}
 
 	claims := jwt.MapClaims{
@@ -110,16 +108,12 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 
 	signedToken, err := token.SignedString([]byte(secret))
 	if err != nil {
-		return "", "", errors.New("Not able to generate Token")
+		return "", "", errors.New("failed to generate access token")
 	}
 
 	generateToken := make([]byte, 32)
-
 	if _, err := rand.Read(generateToken); err != nil {
-		return "", "", ValidationError{
-			Field: "Refresh token",
-			Msg:   "not able to generate token for refresh",
-		}
+		return "", "", errors.New("failed to generate refresh token")
 	}
 
 	stringToken := base64.RawURLEncoding.EncodeToString(generateToken)
@@ -127,44 +121,47 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 	tokenHash := hex.EncodeToString(hash[:])
 
 	addingToken, err := s.userRepo.AddRefreshToken(ctx, tokenHash, email)
-	if addingToken == false {
-		return "", "", ValidationError{
-			Field: "DB error",
-			Msg:   "Not added refresh token",
-		}
+	if err != nil {
+		return "", "", err
+	}
+	if !addingToken {
+		return "", "", errors.New("failed to save refresh token")
 	}
 
 	return signedToken, stringToken, nil
 }
 
 func (s *UserService) FetchUser(ctx context.Context, id int) (repository.User, error) {
-	UserData, err := s.userRepo.FetchData(ctx, id)
+	userData, err := s.userRepo.FetchData(ctx, id)
 	if err != nil {
-		return repository.User{}, ValidationError{
-			Field: "data not fetched",
-			Msg:   err.Error(),
+		if errors.Is(err, pgx.ErrNoRows) {
+			return repository.User{}, ErrUserNotFound
 		}
+		return repository.User{}, err
 	}
-	return UserData, nil
+	return userData, nil
 }
 
 func (s *UserService) VerfiyToken(ctx context.Context, token string) (repository.User, error) {
-	UserData, err := s.userRepo.VerfiyToken(ctx, token)
+	userData, err := s.userRepo.VerfiyToken(ctx, token)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return repository.User{}, ErrTokenNotFound
+		}
 		return repository.User{}, err
 	}
 
-	return UserData, nil
+	return userData, nil
 }
 
 func (s *UserService) LogoutRemoveToken(ctx context.Context, hashtoken string) (bool, error) {
-	DeleteToken, err := s.userRepo.RemoveToken(ctx, hashtoken)
+	deleteToken, err := s.userRepo.RemoveToken(ctx, hashtoken)
 	if err != nil {
-		return false, ValidationError{
-			Field: "DB Error",
-			Msg:   "Failed to Delete Token",
+		if errors.Is(err, repository.ErrRefreshTokenNotFound) {
+			return false, ErrTokenNotFound
 		}
+		return false, err
 	}
 
-	return DeleteToken, nil
+	return deleteToken, nil
 }

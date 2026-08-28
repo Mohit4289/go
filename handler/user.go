@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"errors"
+	"net/http"
+
 	"gin-quickstart/service"
 
 	"github.com/alexedwards/argon2id"
@@ -15,29 +18,35 @@ type CreateUser struct {
 
 func User(userService *service.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		var user CreateUser
 
 		err := c.ShouldBindJSON(&user)
 		if err != nil {
-			c.JSON(400, gin.H{
-				"error": "invalid request",
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "invalid request body: please provide name, valid email, and pass",
 			})
 			return
 		}
 
 		err = userService.ValidateUser(c.Request.Context(), user.Email)
 		if err != nil {
-			c.JSON(500, gin.H{
-				"error": err.Error(),
+			if errors.Is(err, service.ErrUserAlreadyExists) {
+				c.JSON(http.StatusConflict, gin.H{
+					"error": "user with this email already exists",
+				})
+				return
+			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to validate user",
 			})
 			return
 		}
 
 		hashPass, err := argon2id.CreateHash(user.Password, argon2id.DefaultParams)
 		if err != nil {
-			c.JSON(400, gin.H{
-				"error": "hashpass error",
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to process password",
 			})
 			return
 		}
@@ -49,14 +58,14 @@ func User(userService *service.UserService) gin.HandlerFunc {
 			hashPass,
 		)
 		if err != nil {
-			c.JSON(500, gin.H{
-				"error": err.Error(),
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to create user",
 			})
 			return
 		}
 
-		c.JSON(201, gin.H{
-			"message": "user created",
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "user created successfully",
 			"user":    addingUser,
 		})
 	}

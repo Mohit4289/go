@@ -14,7 +14,7 @@ func TokenVerification() gin.HandlerFunc {
 		tokenString, err := c.Cookie("access_token")
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "authentication required",
+				"error": "authentication required: access token is missing",
 			})
 			c.Abort()
 			return
@@ -22,8 +22,8 @@ func TokenVerification() gin.HandlerFunc {
 
 		secret, ok := os.LookupEnv("JWT_SECRET")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Secret token not configured",
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "internal server error: JWT secret not configured",
 			})
 			c.Abort()
 			return
@@ -44,19 +44,42 @@ func TokenVerification() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			c.JSON(401, gin.H{
-				"message": "user id not fetched",
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid token claims",
 			})
 			c.Abort()
 			return
 		}
 
-		user_id := claims["user_id"]
-		id := int(user_id.(float64))
+		userIDVal, exists := claims["user_id"]
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "user_id not found in token claims",
+			})
+			c.Abort()
+			return
+		}
+
+		var id int
+		switch v := userIDVal.(type) {
+		case float64:
+			id = int(v)
+		case int:
+			id = v
+		case int64:
+			id = int(v)
+		default:
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid user_id format in token",
+			})
+			c.Abort()
+			return
+		}
+
 		c.Set("user_id", id)
 		c.Next()
-
 	}
 }

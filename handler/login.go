@@ -2,6 +2,8 @@ package handler
 
 import (
 	"errors"
+	"net/http"
+
 	"gin-quickstart/service"
 
 	"github.com/gin-gonic/gin"
@@ -17,31 +19,27 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 		var login LoginUser
 
 		err := c.ShouldBindJSON(&login)
-
 		if err != nil {
-			c.JSON(400, gin.H{
-				"message": "fill the data",
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "invalid request body: please provide email and pass",
 			})
 			return
 		}
 
-		var validationErr service.ValidationError
-
-		token, refresh_token, err := userService.CheckPassword(
+		token, refreshToken, err := userService.CheckPassword(
 			c.Request.Context(),
 			login.Email,
 			login.Password,
 		)
 		if err != nil {
-			if errors.As(err, &validationErr) {
-				c.JSON(400, gin.H{
-					"field": validationErr.Field,
-					"error": validationErr.Msg,
+			if errors.Is(err, service.ErrInvalidCredentials) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "invalid email or password",
 				})
 				return
 			}
 
-			c.JSON(500, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "internal server error",
 			})
 			return
@@ -49,7 +47,7 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 
 		c.SetCookie(
 			"refresh_token",
-			refresh_token,
+			refreshToken,
 			60*60*24,
 			"/",
 			"",
@@ -60,15 +58,15 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 		c.SetCookie(
 			"access_token",
 			token,
-			60,
+			60*60*24,
 			"/",
 			"",
 			false,
 			true,
 		)
 
-		c.JSON(200, gin.H{
-			"message": "login sucessfully",
+		c.JSON(http.StatusOK, gin.H{
+			"message": "login successful",
 			"token":   token,
 		})
 	}

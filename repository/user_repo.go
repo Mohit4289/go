@@ -7,10 +7,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var ErrRefreshTokenNotFound = errors.New("refresh token not found")
+
 type User struct {
-	ID    int64
-	Name  string
-	Email string
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 type UserPass struct {
@@ -140,13 +142,13 @@ func (r *UserRepo) VerfiyToken(ctx context.Context, refresh_token string) (User,
 }
 
 func (r *UserRepo) RemoveToken(ctx context.Context, refresh_token string) (bool, error) {
-	row, err := r.DB.Exec(ctx, `DELETE FROM "user" WHERE refresh_token = $1`, refresh_token)
+	res, err := r.DB.Exec(ctx, `UPDATE "user" SET refresh_token = NULL WHERE refresh_token = $1`, refresh_token)
 	if err != nil {
 		return false, err
 	}
 
-	if row.RowsAffected() == 0 {
-		return false, errors.New("refresh token not found")
+	if res.RowsAffected() == 0 {
+		return false, ErrRefreshTokenNotFound
 	}
 
 	return true, nil

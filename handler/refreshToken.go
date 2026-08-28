@@ -3,21 +3,23 @@ package handler
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"gin-quickstart/service"
+	"errors"
+	"net/http"
 	"os"
 	"time"
+
+	"gin-quickstart/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func RefreshToken(UserService *service.UserService) gin.HandlerFunc {
+func RefreshToken(userService *service.UserService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		token, err := ctx.Cookie("refresh_token")
 		if err != nil {
-			ctx.JSON(401, gin.H{
-				"message": "not able to get token",
-				"err":     err,
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "refresh token is required",
 			})
 			return
 		}
@@ -25,19 +27,25 @@ func RefreshToken(UserService *service.UserService) gin.HandlerFunc {
 		hash := sha256.Sum256([]byte(token))
 		tokenHash := hex.EncodeToString(hash[:])
 
-		checkingToken, err := UserService.VerfiyToken(ctx, tokenHash)
+		checkingToken, err := userService.VerfiyToken(ctx.Request.Context(), tokenHash)
 		if err != nil {
-			ctx.JSON(401, gin.H{
-				"message": "not verfied",
-				"err":     err,
+			if errors.Is(err, service.ErrTokenNotFound) {
+				ctx.JSON(http.StatusUnauthorized, gin.H{
+					"error": "invalid or expired refresh token",
+				})
+				return
+			}
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to verify refresh token",
 			})
 			return
 		}
 
 		secret, ok := os.LookupEnv("JWT_SECRET")
 		if !ok {
-			ctx.JSON(401, gin.H{
-				"message": "Token not configuered ",
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "internal server error: JWT secret not configured",
 			})
 			return
 		}
@@ -49,18 +57,19 @@ func RefreshToken(UserService *service.UserService) gin.HandlerFunc {
 			"iat":     time.Now().Unix(),
 		}
 
-		access_token := jwt.NewWithClaims(
+		accessToken := jwt.NewWithClaims(
 			jwt.SigningMethodHS256,
 			claims,
 		)
 
-		signedToken, err := access_token.SignedString([]byte(secret))
+		signedToken, err := accessToken.SignedString([]byte(secret))
 		if err != nil {
-			ctx.JSON(401, gin.H{
-				"message": "not able to generate access token ",
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to generate access token",
 			})
 			return
 		}
+
 		ctx.SetCookie(
 			"access_token",
 			signedToken,
@@ -71,10 +80,10 @@ func RefreshToken(UserService *service.UserService) gin.HandlerFunc {
 			true,
 		)
 
-		ctx.JSON(200, gin.H{
-			"message": "verfied succesfully",
-			"data":    checkingToken,
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "token refreshed successfully",
+			"token":   signedToken,
+			"user":    checkingToken,
 		})
-
 	}
 }
