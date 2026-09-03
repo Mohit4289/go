@@ -2,23 +2,21 @@ package database
 
 import (
 	"context"
-	"errors"
-	"os"
+	"log"
 	"time"
+
+	"gin-quickstart/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func Connect() (*pgxpool.Pool, error) {
 
-	databaseURL, exists := os.LookupEnv("Database_URL")
+	cfg := config.Load()
 
-	if !exists || databaseURL == "" {
-		return nil, errors.New("DATABASE_URL is not set")
-	}
-
-	config, err := pgxpool.ParseConfig(databaseURL)
+	config, err := pgxpool.ParseConfig(cfg.Database_URL)
 	if err != nil {
+		log.Printf("DB URL config error%v", err)
 		return nil, err
 	}
 
@@ -36,5 +34,6 @@ func Connect() (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
+	log.Println("INFO: DB started successfully")
 	return pool, nil
 }

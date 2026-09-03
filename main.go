@@ -65,8 +65,7 @@ func main() {
 	)
 
 	defer cancel()
-
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server shutdown error: %v", err)
+		log.Printf("ERR: Server shutdown error: %v", err)
 	}
 }

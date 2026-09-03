@@ -2,7 +2,8 @@ package middleware
 
 import (
 	"net/http"
-	"os"
+
+	"gin-quickstart/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -20,8 +21,9 @@ func TokenVerification() gin.HandlerFunc {
 			return
 		}
 
-		secret, ok := os.LookupEnv("JWT_SECRET")
-		if !ok {
+		config := config.Load()
+		secret := config.JWT_SECRET
+		if secret == "" {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "internal server error: JWT secret not configured",
 			})
