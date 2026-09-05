@@ -119,20 +119,65 @@ func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (UserPass, 
 
 func (r *UserRepo) FetchData(ctx context.Context, id int) (User, error) {
 
-	row := r.DB.QueryRow(ctx, `SELECT id, name, email FROM public."user" WHERE id = $1`, id)
+	key := "user:" + strconv.Itoa(id)
 
-	var UserData User
-	err := row.Scan(
-		&UserData.ID,
-		&UserData.Name,
-		&UserData.Email,
+	// 1. Check Redis
+	userData, err := r.Redis.Get(ctx, key).Result()
+
+	if err == nil {
+		var user User
+
+		err := json.Unmarshal([]byte(userData), &user)
+		if err != nil {
+			return User{}, err
+		}
+
+		return user, nil
+	}
+
+	// 2. Redis miss → PostgreSQL
+	if err != redis.Nil {
+		return User{}, err
+	}
+
+	row := r.DB.QueryRow(
+		ctx,
+		`SELECT id, name, email
+		 FROM public."user"
+		 WHERE id = $1`,
+		id,
+	)
+
+	var user User
+
+	err = row.Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
 	)
 	if err != nil {
 		return User{}, err
 	}
-	return UserData, nil
-}
 
+	// 3. Store result in Redis
+	userDataBytes, err := json.Marshal(user)
+	if err != nil {
+		return User{}, err
+	}
+
+	err = r.Redis.Set(
+		ctx,
+		key,
+		userDataBytes,
+		10*time.Minute,
+	).Err()
+
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
 func (r *UserRepo) AddRefreshToken(ctx context.Context, refresh_token string, email string) (bool, error) {
 	_, err := r.DB.Exec(
 		ctx,
