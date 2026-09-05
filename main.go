@@ -31,6 +31,9 @@ func main() {
 		log.Fatal("db failed", err)
 	}
 
+	redis := database.ConnectRedis()
+
+	defer redis.Close()
 	defer db.Close()
 
 	userRepo := repository.NewUserRepo(db)
