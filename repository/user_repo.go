@@ -2,9 +2,13 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 var ErrRefreshTokenNotFound = errors.New("refresh token not found")
@@ -21,12 +25,14 @@ type UserPass struct {
 }
 
 type UserRepo struct {
-	DB *pgxpool.Pool
+	DB    *pgxpool.Pool
+	Redis *redis.Client
 }
 
-func NewUserRepo(db *pgxpool.Pool) *UserRepo {
+func NewUserRepo(db *pgxpool.Pool, redis *redis.Client) *UserRepo {
 	return &UserRepo{
-		DB: db,
+		DB:    db,
+		Redis: redis,
 	}
 }
 
@@ -52,6 +58,24 @@ func (r *UserRepo) CreateUser(
 		&user.Name,
 		&user.Email,
 	)
+	if err != nil {
+		return User{}, err
+	}
+
+	userData, err := json.Marshal(user)
+	if err != nil {
+		return User{}, err
+	}
+
+	key := "user:" + strconv.Itoa(int(user.ID))
+
+	err = r.Redis.Set(
+		ctx,
+		key,
+		userData,
+		10*time.Minute,
+	).Err()
+
 	if err != nil {
 		return User{}, err
 	}

@@ -36,7 +36,7 @@ func main() {
 	defer redis.Close()
 	defer db.Close()
 
-	userRepo := repository.NewUserRepo(db)
+	userRepo := repository.NewUserRepo(db, redis)
 	userService := service.NewUserService(userRepo)
 	userData := handler.GetUserRepo(userRepo)
 
