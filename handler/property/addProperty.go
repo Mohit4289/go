@@ -69,6 +69,7 @@ func AddProperty(propertyService *service.PropertyService) gin.HandlerFunc {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"message": err.Error(),
 			})
+			os.Remove(filePath)
 			return
 		}
 
