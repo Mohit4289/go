@@ -2,23 +2,27 @@ package service
 
 import (
 	"context"
-	"gin-quickstart/repository"
+	db "gin-quickstart/db/sqlc"
 )
 
 type PropertyService struct {
-	propertyRepo *repository.PropertyRepo
+	queries *db.Queries
 }
 
-func NewPropertyService(propertyRepo *repository.PropertyRepo) *PropertyService {
+func NewPropertyService(queries *db.Queries) *PropertyService {
 	return &PropertyService{
-		propertyRepo: propertyRepo,
+		queries: queries,
 	}
 }
 
-func (s *PropertyService) AddProperty(ctx context.Context, userID int, name string, photoID int) (repository.PropertyData, error) {
-	data, err := s.propertyRepo.CreateProperty(ctx, userID, name, photoID)
+func (s *PropertyService) AddProperty(ctx context.Context, userID int, name string, photoID int) (db.Property, error) {
+	data, err := s.queries.CreateProperty(ctx, db.CreatePropertyParams{
+		UserID:  int64(userID),
+		Name:    name,
+		PhotoID: int32(photoID),
+	})
 	if err != nil {
-		return repository.PropertyData{}, err
+		return db.Property{}, err
 	}
 	return data, nil
 }
