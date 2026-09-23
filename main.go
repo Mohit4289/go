@@ -31,8 +31,9 @@ func main() {
 	}
 
 	redisClient := database.ConnectRedis()
-
-	defer redisClient.Close()
+	if redisClient != nil {
+		defer redisClient.Close()
+	}
 	defer connPool.Close()
 
 	queries := db.New(connPool)
