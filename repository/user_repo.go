@@ -47,7 +47,7 @@ func (r *UserRepo) CreateUser(
 
 	err := r.DB.QueryRow(
 		ctx,
-		`INSERT INTO "user" (name, email, password)
+		`INSERT INTO users (name, email, password)
 		 VALUES ($1, $2, $3)
 		 RETURNING id, name, email`,
 		name,
@@ -86,7 +86,7 @@ func (r *UserRepo) CreateUser(
 func (r *UserRepo) FindUserByEmail(ctx context.Context, email string) (int64, error) {
 	row := r.DB.QueryRow(
 		ctx,
-		`SELECT id FROM public."user" WHERE email = $1`,
+		`SELECT id FROM users WHERE email = $1`,
 		email,
 	)
 
@@ -100,7 +100,7 @@ func (r *UserRepo) FindUserByEmail(ctx context.Context, email string) (int64, er
 }
 
 func (r *UserRepo) VerifyPassword(ctx context.Context, email string) (UserPass, error) {
-	row := r.DB.QueryRow(ctx, `SELECT id, password FROM public."user" WHERE email = $1`,
+	row := r.DB.QueryRow(ctx, `SELECT id, password FROM users WHERE email = $1`,
 		email,
 	)
 
@@ -143,7 +143,7 @@ func (r *UserRepo) FetchData(ctx context.Context, id int) (User, error) {
 	row := r.DB.QueryRow(
 		ctx,
 		`SELECT id, name, email
-		 FROM public."user"
+		 FROM users
 		 WHERE id = $1`,
 		id,
 	)
@@ -181,7 +181,7 @@ func (r *UserRepo) FetchData(ctx context.Context, id int) (User, error) {
 func (r *UserRepo) AddRefreshToken(ctx context.Context, refresh_token string, email string) (bool, error) {
 	_, err := r.DB.Exec(
 		ctx,
-		`UPDATE "user"
+		`UPDATE users
          SET refresh_token = $1
          WHERE email = $2`,
 		refresh_token, email,
@@ -195,7 +195,7 @@ func (r *UserRepo) AddRefreshToken(ctx context.Context, refresh_token string, em
 }
 
 func (r *UserRepo) VerfiyToken(ctx context.Context, refresh_token string) (User, error) {
-	row := r.DB.QueryRow(ctx, `SELECT id, name, email FROM public."user" WHERE refresh_token = $1`, refresh_token)
+	row := r.DB.QueryRow(ctx, `SELECT id, name, email FROM users WHERE refresh_token = $1`, refresh_token)
 
 	var user User
 	err := row.Scan(
@@ -211,7 +211,7 @@ func (r *UserRepo) VerfiyToken(ctx context.Context, refresh_token string) (User,
 }
 
 func (r *UserRepo) RemoveToken(ctx context.Context, refresh_token string) (bool, error) {
-	res, err := r.DB.Exec(ctx, `UPDATE "user" SET refresh_token = NULL WHERE refresh_token = $1`, refresh_token)
+	res, err := r.DB.Exec(ctx, `UPDATE users SET refresh_token = NULL WHERE refresh_token = $1`, refresh_token)
 	if err != nil {
 		return false, err
 	}

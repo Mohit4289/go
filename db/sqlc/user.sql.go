@@ -12,7 +12,7 @@ import (
 )
 
 const addRefreshToken = `-- name: AddRefreshToken :execrows
-UPDATE "user"
+UPDATE users
 SET refresh_token = $1
 WHERE email = $2
 `
@@ -31,7 +31,7 @@ func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO "user" (name, email, password)
+INSERT INTO users (name, email, password)
 VALUES ($1, $2, $3)
 RETURNING id, name, email
 `
@@ -57,7 +57,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 
 const fetchUserByID = `-- name: FetchUserByID :one
 SELECT id, name, email
-FROM public."user"
+FROM users
 WHERE id = $1
 `
 
@@ -75,7 +75,7 @@ func (q *Queries) FetchUserByID(ctx context.Context, id int64) (FetchUserByIDRow
 }
 
 const findUserByEmail = `-- name: FindUserByEmail :one
-SELECT id FROM public."user" WHERE email = $1
+SELECT id FROM users WHERE email = $1
 `
 
 func (q *Queries) FindUserByEmail(ctx context.Context, email string) (int64, error) {
@@ -86,7 +86,7 @@ func (q *Queries) FindUserByEmail(ctx context.Context, email string) (int64, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, email FROM public."user"
+SELECT id, name, email FROM users
 `
 
 type ListUsersRow struct {
@@ -116,7 +116,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
 }
 
 const removeRefreshToken = `-- name: RemoveRefreshToken :execrows
-UPDATE "user" SET refresh_token = NULL WHERE refresh_token = $1
+UPDATE users SET refresh_token = NULL WHERE refresh_token = $1
 `
 
 func (q *Queries) RemoveRefreshToken(ctx context.Context, refreshToken pgtype.Text) (int64, error) {
@@ -128,7 +128,7 @@ func (q *Queries) RemoveRefreshToken(ctx context.Context, refreshToken pgtype.Te
 }
 
 const verifyPassword = `-- name: VerifyPassword :one
-SELECT id, password FROM public."user" WHERE email = $1
+SELECT id, password FROM users WHERE email = $1
 `
 
 type VerifyPasswordRow struct {
@@ -144,7 +144,7 @@ func (q *Queries) VerifyPassword(ctx context.Context, email string) (VerifyPassw
 }
 
 const verifyRefreshToken = `-- name: VerifyRefreshToken :one
-SELECT id, name, email FROM public."user" WHERE refresh_token = $1
+SELECT id, name, email FROM users WHERE refresh_token = $1
 `
 
 type VerifyRefreshTokenRow struct {

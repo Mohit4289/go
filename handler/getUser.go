@@ -30,7 +30,7 @@ func GetUser(r *UserService) gin.HandlerFunc {
 
 		rows, err := r.userRepo.DB.Query(
 			ctx.Request.Context(),
-			`SELECT id, name, email FROM public."user"`,
+			`SELECT id, name, email FROM users`,
 		)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{

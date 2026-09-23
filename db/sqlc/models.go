@@ -9,10 +9,10 @@ import (
 )
 
 type Property struct {
-	ID      int64  `json:"id"`
-	UserID  int64  `json:"user_id"`
-	Name    string `json:"name"`
-	PhotoID int32  `json:"photo_id"`
+	ID      int64       `json:"id"`
+	UserID  int64       `json:"user_id"`
+	Name    string      `json:"name"`
+	PhotoID pgtype.Int8 `json:"photo_id"`
 }
 
 type User struct {

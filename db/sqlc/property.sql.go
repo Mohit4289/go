@@ -7,18 +7,20 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createProperty = `-- name: CreateProperty :one
-INSERT INTO property (user_id, name, photo_id)
+INSERT INTO properties (user_id, name, photo_id)
 VALUES ($1, $2, $3)
 RETURNING id, user_id, name, photo_id
 `
 
 type CreatePropertyParams struct {
-	UserID  int64  `json:"user_id"`
-	Name    string `json:"name"`
-	PhotoID int32  `json:"photo_id"`
+	UserID  int64       `json:"user_id"`
+	Name    string      `json:"name"`
+	PhotoID pgtype.Int8 `json:"photo_id"`
 }
 
 func (q *Queries) CreateProperty(ctx context.Context, arg CreatePropertyParams) (Property, error) {
