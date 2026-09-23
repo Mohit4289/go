@@ -3,8 +3,7 @@ package main
 import (
 	"context"
 	"gin-quickstart/database"
-	"gin-quickstart/handler"
-	"gin-quickstart/repository"
+	db "gin-quickstart/db/sqlc"
 	"gin-quickstart/router"
 	"gin-quickstart/service"
 	"log"
@@ -21,26 +20,27 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("failed to load .env:", err)
+		log.Println("Note: .env file not loaded:", err)
 	}
 
 	r := gin.Default()
 
-	db, err := database.Connect()
+	connPool, err := database.Connect()
 	if err != nil {
-		log.Fatal("db failed", err)
+		log.Fatal("db failed: ", err)
 	}
 
-	redis := database.ConnectRedis()
+	redisClient := database.ConnectRedis()
 
-	defer redis.Close()
-	defer db.Close()
+	defer redisClient.Close()
+	defer connPool.Close()
 
-	userRepo := repository.NewUserRepo(db, redis)
-	userService := service.NewUserService(userRepo)
-	userData := handler.GetUserRepo(userRepo)
+	queries := db.New(connPool)
+	userService := service.NewUserService(queries, redisClient)
+	propertyService := service.NewPropertyService(queries)
 
-	router.SetupRoutes(r, userService, userData)
+	router.SetupRoutes(r, userService)
+	router.SetupPropertyRoutes(r, propertyService)
 
 	server := &http.Server{
 		Addr:    ":8080",

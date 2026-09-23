@@ -6,23 +6,27 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
-	"gin-quickstart/repository"
+	"os"
+	"strconv"
 	"time"
 
-	"os"
+	db "gin-quickstart/db/sqlc"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
-	ErrUserAlreadyExists        = errors.New("user already exists")
-	ErrInvalidCredentials       = errors.New("invalid email or password")
-	ErrUserNotFound             = errors.New("user not found")
-	ErrTokenNotFound            = errors.New("refresh token not found")
-	ErrJWTSecretNotConfigured   = errors.New("JWT secret not configured")
+	ErrUserAlreadyExists      = errors.New("user already exists")
+	ErrInvalidCredentials     = errors.New("invalid email or password")
+	ErrUserNotFound           = errors.New("user not found")
+	ErrTokenNotFound          = errors.New("refresh token not found")
+	ErrJWTSecretNotConfigured = errors.New("JWT secret not configured")
 )
 
 type ValidationError struct {
@@ -30,22 +34,24 @@ type ValidationError struct {
 	Msg   string
 }
 
-type UserService struct {
-	userRepo *repository.UserRepo
-}
-
 func (e ValidationError) Error() string {
 	return e.Msg
 }
 
-func NewUserService(userRepo *repository.UserRepo) *UserService {
+type UserService struct {
+	queries *db.Queries
+	redis   *redis.Client
+}
+
+func NewUserService(queries *db.Queries, redis *redis.Client) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		queries: queries,
+		redis:   redis,
 	}
 }
 
 func (s *UserService) ValidateUser(ctx context.Context, email string) error {
-	_, err := s.userRepo.FindUserByEmail(ctx, email)
+	_, err := s.queries.FindUserByEmail(ctx, email)
 	if err == nil {
 		return ErrUserAlreadyExists
 	}
@@ -62,17 +68,27 @@ func (s *UserService) AddUser(
 	name string,
 	email string,
 	password string,
-) (repository.User, error) {
-	user, err := s.userRepo.CreateUser(ctx, name, email, password)
+) (db.CreateUserRow, error) {
+	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+		Name:     name,
+		Email:    email,
+		Password: password,
+	})
 	if err != nil {
-		return repository.User{}, err
+		return db.CreateUserRow{}, err
+	}
+
+	userData, err := json.Marshal(user)
+	if err == nil && s.redis != nil {
+		key := "user:" + strconv.FormatInt(user.ID, 10)
+		_ = s.redis.Set(ctx, key, userData, 10*time.Minute).Err()
 	}
 
 	return user, nil
 }
 
 func (s *UserService) CheckPassword(ctx context.Context, email string, password string) (string, string, error) {
-	data, err := s.userRepo.VerifyPassword(ctx, email)
+	data, err := s.queries.VerifyPassword(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", ErrInvalidCredentials
@@ -81,11 +97,7 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 	}
 
 	verifyPass, err := argon2id.ComparePasswordAndHash(password, data.Password)
-	if err != nil {
-		return "", "", ErrInvalidCredentials
-	}
-
-	if !verifyPass {
+	if err != nil || !verifyPass {
 		return "", "", ErrInvalidCredentials
 	}
 
@@ -120,48 +132,76 @@ func (s *UserService) CheckPassword(ctx context.Context, email string, password 
 	hash := sha256.Sum256([]byte(stringToken))
 	tokenHash := hex.EncodeToString(hash[:])
 
-	addingToken, err := s.userRepo.AddRefreshToken(ctx, tokenHash, email)
+	rowsAffected, err := s.queries.AddRefreshToken(ctx, db.AddRefreshTokenParams{
+		RefreshToken: pgtype.Text{String: tokenHash, Valid: true},
+		Email:        email,
+	})
 	if err != nil {
 		return "", "", err
 	}
-	if !addingToken {
+	if rowsAffected == 0 {
 		return "", "", errors.New("failed to save refresh token")
 	}
 
 	return signedToken, stringToken, nil
 }
 
-func (s *UserService) FetchUser(ctx context.Context, id int) (repository.User, error) {
-	userData, err := s.userRepo.FetchData(ctx, id)
+func (s *UserService) FetchUser(ctx context.Context, id int) (db.FetchUserByIDRow, error) {
+	key := "user:" + strconv.Itoa(id)
+
+	if s.redis != nil {
+		userData, err := s.redis.Get(ctx, key).Result()
+		if err == nil {
+			var user db.FetchUserByIDRow
+			if err := json.Unmarshal([]byte(userData), &user); err == nil {
+				return user, nil
+			}
+		}
+	}
+
+	user, err := s.queries.FetchUserByID(ctx, int64(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return repository.User{}, ErrUserNotFound
+			return db.FetchUserByIDRow{}, ErrUserNotFound
 		}
-		return repository.User{}, err
+		return db.FetchUserByIDRow{}, err
 	}
-	return userData, nil
+
+	if s.redis != nil {
+		userDataBytes, err := json.Marshal(user)
+		if err == nil {
+			_ = s.redis.Set(ctx, key, userDataBytes, 10*time.Minute).Err()
+		}
+	}
+
+	return user, nil
 }
 
-func (s *UserService) VerfiyToken(ctx context.Context, token string) (repository.User, error) {
-	userData, err := s.userRepo.VerfiyToken(ctx, token)
+func (s *UserService) VerfiyToken(ctx context.Context, token string) (db.VerifyRefreshTokenRow, error) {
+	user, err := s.queries.VerifyRefreshToken(ctx, pgtype.Text{String: token, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return repository.User{}, ErrTokenNotFound
+			return db.VerifyRefreshTokenRow{}, ErrTokenNotFound
 		}
-		return repository.User{}, err
+		return db.VerifyRefreshTokenRow{}, err
 	}
 
-	return userData, nil
+	return user, nil
 }
 
 func (s *UserService) LogoutRemoveToken(ctx context.Context, hashtoken string) (bool, error) {
-	deleteToken, err := s.userRepo.RemoveToken(ctx, hashtoken)
+	rowsAffected, err := s.queries.RemoveRefreshToken(ctx, pgtype.Text{String: hashtoken, Valid: true})
 	if err != nil {
-		if errors.Is(err, repository.ErrRefreshTokenNotFound) {
-			return false, ErrTokenNotFound
-		}
 		return false, err
 	}
+	if rowsAffected == 0 {
+		return false, ErrTokenNotFound
+	}
 
-	return deleteToken, nil
+	return true, nil
 }
+
+func (s *UserService) ListUsers(ctx context.Context) ([]db.ListUsersRow, error) {
+	return s.queries.ListUsers(ctx)
+}
+

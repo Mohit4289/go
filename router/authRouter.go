@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(r *gin.Engine, userService *service.UserService, userRepo *handler.UserService) {
+func SetupRoutes(r *gin.Engine, userService *service.UserService) {
 
 	auth := r.Group("/auth")
 
@@ -17,8 +17,9 @@ func SetupRoutes(r *gin.Engine, userService *service.UserService, userRepo *hand
 	auth.POST("/refresh_token", handler.RefreshToken(userService))
 
 	auth.Use(middleware.TokenVerification())
-	auth.GET("/checkuser", handler.GetUser(userRepo))
+	auth.GET("/checkuser", handler.GetUser(userService))
 	auth.GET("/userdata", handler.MeUser(userService))
 	auth.POST("/logout", handler.Logout(userService))
 
 }
+
