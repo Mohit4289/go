@@ -34,3 +34,12 @@ func (q *Queries) CreateProperty(ctx context.Context, arg CreatePropertyParams) 
 	)
 	return i, err
 }
+
+const deleteProperty = `-- name: DeleteProperty :exec
+DELETE FROM properties WHERE user_id = $1
+`
+
+func (q *Queries) DeleteProperty(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteProperty, userID)
+	return err
+}

@@ -34,3 +34,6 @@ func (s *PropertyService) AddProperty(ctx context.Context, userID int, name stri
 	return data, nil
 }
 
+func (s *PropertyService) DeleteProperty(ctx context.Context, userID int) error {
+	return s.queries.DeleteProperty(ctx, int64(userID))
+}
