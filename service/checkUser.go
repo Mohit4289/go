@@ -204,4 +204,3 @@ func (s *UserService) LogoutRemoveToken(ctx context.Context, hashtoken string) (
 func (s *UserService) ListUsers(ctx context.Context) ([]db.ListUsersRow, error) {
 	return s.queries.ListUsers(ctx)
 }
-
