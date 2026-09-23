@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"gin-quickstart/service"
@@ -37,8 +38,9 @@ func User(userService *service.UserService) gin.HandlerFunc {
 				return
 			}
 
+			log.Printf("ERROR validating user: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "failed to validate user",
+				"error": "failed to validate user: " + err.Error(),
 			})
 			return
 		}
@@ -58,8 +60,9 @@ func User(userService *service.UserService) gin.HandlerFunc {
 			hashPass,
 		)
 		if err != nil {
+			log.Printf("ERROR creating user: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "failed to create user",
+				"error": "failed to create user: " + err.Error(),
 			})
 			return
 		}
